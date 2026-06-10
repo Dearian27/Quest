@@ -23,11 +23,26 @@ const elements = {
 };
 
 const pad = (value) => String(value).padStart(2, "0");
+const targetVersion = "30m-v1";
 let watchId;
+let locationPollId;
+let locationAgeId;
 let currentHeading = null;
 let currentBearing = null;
 let lastPosition = null;
-let targetLocation = JSON.parse(localStorage.getItem("questTargetLocation") || "null");
+let lastLocationUpdate = null;
+let locationRequestPending = false;
+let arrowRotation = 0;
+let headingRotation = 0;
+let simulatedArrival = false;
+let targetLocation = localStorage.getItem("questTargetVersion") === targetVersion
+  ? JSON.parse(localStorage.getItem("questTargetLocation") || "null")
+  : null;
+
+if (!targetLocation) {
+  localStorage.removeItem("questTargetLocation");
+  localStorage.setItem("questTargetVersion", targetVersion);
+}
 
 function setScreen(screenName) {
   ["countdown", "reveal", "tracking"].forEach((name) => {
@@ -99,32 +114,50 @@ function distanceAndBearing(from, to) {
 }
 
 function updatePosition(position) {
+  if (lastPosition && position.timestamp <= lastPosition.timestamp) return;
+
   const current = {
     latitude: position.coords.latitude,
     longitude: position.coords.longitude,
   };
 
   if (!targetLocation) {
-    targetLocation = destinationPoint(current.latitude, current.longitude, 80, 90);
+    targetLocation = destinationPoint(current.latitude, current.longitude, 30, 90);
     localStorage.setItem("questTargetLocation", JSON.stringify(targetLocation));
   }
 
   const result = distanceAndBearing(current, targetLocation);
-  const roundedDistance = Math.round(result.distance);
-  const radarDistance = Math.min(result.distance, 100);
+  const effectiveDistance = simulatedArrival ? 0 : result.distance;
+  const displayDistance = result.distance < 100
+    ? effectiveDistance.toFixed(1)
+    : Math.round(effectiveDistance);
+  const radarDistance = Math.min(effectiveDistance, 100);
   const radius = (radarDistance / 100) * 46;
   currentBearing = result.bearing;
   const radians = (result.bearing - 90) * Math.PI / 180;
 
-  elements.distance.textContent = roundedDistance;
-  elements.gpsStatus.textContent = `точність ±${Math.round(position.coords.accuracy)} м`;
+  elements.distance.textContent = displayDistance;
   elements.targetDot.style.left = `${50 + Math.cos(radians) * radius}%`;
   elements.targetDot.style.top = `${50 + Math.sin(radians) * radius}%`;
   updateCompass();
-  elements.trackingMessage.textContent = roundedDistance <= 10
-    ? "Ти на місці"
+  const hasArrived = effectiveDistance <= 10;
+  elements.tracking.classList.toggle("has-arrived", hasArrived);
+  elements.trackingMessage.textContent = hasArrived
+    ? "Ти в зоні фінішу"
     : "Рухайся у напрямку стрілки";
   lastPosition = position;
+  lastLocationUpdate = Date.now();
+  updateLocationAge();
+}
+
+function updateLocationAge() {
+  if (!lastPosition || !lastLocationUpdate) return;
+
+  const age = Math.floor((Date.now() - lastLocationUpdate) / 1000);
+  const accuracy = Math.round(lastPosition.coords.accuracy);
+  elements.gpsStatus.textContent = age < 2
+    ? `наживо · точність ±${accuracy} м`
+    : `${age} с тому · точність ±${accuracy} м`;
 }
 
 function updateCompass() {
@@ -136,9 +169,11 @@ function updateCompass() {
   const signedTurn = relativeBearing > 180 ? relativeBearing - 360 : relativeBearing;
   const absoluteTurn = Math.abs(Math.round(signedTurn));
 
-  elements.directionArrowIcon.style.transform = `rotate(${relativeBearing}deg)`;
-  elements.headingBeam.style.transform = `translate(-50%, -100%) rotate(${currentHeading || 0}deg)`;
-  elements.userBeacon.style.transform = `translate(-50%, -50%) rotate(${currentHeading || 0}deg)`;
+  arrowRotation += ((relativeBearing - arrowRotation + 540) % 360) - 180;
+  headingRotation += (((currentHeading || 0) - headingRotation + 540) % 360) - 180;
+  elements.directionArrowIcon.style.transform = `rotate(${arrowRotation}deg)`;
+  elements.headingBeam.style.transform = `translate(-50%, -100%) rotate(${headingRotation}deg)`;
+  elements.userBeacon.style.transform = `translate(-50%, -50%) rotate(${headingRotation}deg)`;
 
   if (currentHeading === null) {
     elements.turnHint.textContent = "напрямок за GPS";
@@ -157,7 +192,6 @@ function handleOrientation(event) {
 
   currentHeading = heading;
   updateCompass();
-  if (lastPosition) updatePosition(lastPosition);
 }
 
 async function startCompass() {
@@ -185,6 +219,27 @@ function locationError(error) {
     : "Не вдалося визначити позицію";
 }
 
+function requestFreshPosition() {
+  if (locationRequestPending || document.hidden) return;
+  locationRequestPending = true;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      locationRequestPending = false;
+      updatePosition(position);
+    },
+    (error) => {
+      locationRequestPending = false;
+      if (!lastPosition) locationError(error);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000,
+    },
+  );
+}
+
 async function startTracking() {
   setScreen("tracking");
   elements.gpsStatus.textContent = "пошук сигналу";
@@ -201,12 +256,30 @@ async function startTracking() {
     maximumAge: 0,
     timeout: 30000,
   });
+
+  clearInterval(locationPollId);
+  clearInterval(locationAgeId);
+  requestFreshPosition();
+  locationPollId = setInterval(requestFreshPosition, 3000);
+  locationAgeId = setInterval(updateLocationAge, 1000);
 }
 
 document.querySelector("#show-final").addEventListener("click", () => setScreen("reveal"));
 document.querySelector("#show-countdown").addEventListener("click", () => setScreen("countdown"));
 document.querySelector("#start-tracking").addEventListener("click", startTracking);
 document.querySelector("#show-reveal").addEventListener("click", () => setScreen("reveal"));
+document.querySelector("#simulate-arrival").addEventListener("click", () => {
+  simulatedArrival = !simulatedArrival;
+  document.querySelector("#simulate-arrival").textContent = simulatedArrival
+    ? "Вимкнути імітацію"
+    : "Імітація фінішу";
+  if (lastPosition) {
+    updatePosition({
+      coords: lastPosition.coords,
+      timestamp: Date.now(),
+    });
+  }
+});
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && elements.tracking.classList.contains("is-active")) {
     startTracking();

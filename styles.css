@@ -515,6 +515,24 @@ h1 {
   text-transform: uppercase;
 }
 
+.simulation-button {
+  margin-top: 14px;
+}
+
+.tracking-screen.has-arrived .radar {
+  border-color: rgba(223, 232, 212, 0.72);
+  box-shadow: 0 0 55px rgba(223, 232, 212, 0.15);
+}
+
+.tracking-screen.has-arrived .target-dot {
+  top: 50% !important;
+  left: 50% !important;
+  width: 28px;
+  height: 28px;
+  background: rgba(223, 232, 212, 0.25);
+  box-shadow: 0 0 35px rgba(223, 232, 212, 0.95);
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.35;
