@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#020303" />
+    <meta name="description" content="Відлік до наступної точки квесту" />
+    <title>02.07</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Unbounded:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="site-shell">
+      <div class="noise" aria-hidden="true"></div>
+
+      <section class="screen countdown-screen is-active" id="countdown-screen">
+        <header class="topbar">
+          <div class="signal" aria-label="Сигнал активний">
+            <span class="signal-dot"></span>
+            <span>сигнал активний</span>
+          </div>
+          <span class="quest-id">QST / 02.07</span>
+        </header>
+
+        <div class="countdown-content">
+          <p class="eyebrow">Залишилось</p>
+          <div class="timer" aria-live="polite">
+            <div class="time-unit">
+              <span class="time-value" id="days">00</span>
+              <span class="time-label">днів</span>
+            </div>
+            <span class="divider">:</span>
+            <div class="time-unit">
+              <span class="time-value" id="hours">00</span>
+              <span class="time-label">годин</span>
+            </div>
+            <span class="divider">:</span>
+            <div class="time-unit">
+              <span class="time-value" id="minutes">00</span>
+              <span class="time-label">хвилин</span>
+            </div>
+            <span class="divider seconds-divider">:</span>
+            <div class="time-unit seconds-unit">
+              <span class="time-value" id="seconds">00</span>
+              <span class="time-label">секунд</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-panel">
+          <div class="progress-track"><span id="progress"></span></div>
+          <div class="status-line">
+            <span>Очікування</span>
+            <span id="percentage">0%</span>
+          </div>
+          <button class="preview-button" id="show-final" type="button">
+            Тест завершення
+          </button>
+        </div>
+      </section>
+
+      <section class="screen reveal-screen" id="reveal-screen" aria-hidden="true">
+        <header class="topbar">
+          <div class="signal">
+            <span class="signal-dot revealed"></span>
+            <span>координати розкрито</span>
+          </div>
+          <span class="quest-id">ТОЧКА 01</span>
+        </header>
+
+        <div class="reveal-content">
+          <div class="crosshair" aria-hidden="true"><span></span></div>
+          <p class="eyebrow">Твоя точка призначення</p>
+          <h1>Озеро<br />Світязь</h1>
+          <a
+            class="coordinates"
+            href="https://www.google.com/maps?q=51.4985,23.8450"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Відкрити координати озера Світязь на карті"
+          >
+            <span>51.4985° N</span>
+            <span>23.8450° E</span>
+          </a>
+          <p class="instruction">Наступний крок чекає на березі.</p>
+        </div>
+
+        <div class="bottom-panel reveal-bottom">
+          <button class="map-button" id="start-tracking" type="button">
+            Почати пошук
+            <span aria-hidden="true">↗</span>
+          </button>
+          <button class="preview-button" id="show-countdown" type="button">
+            Повернути відлік
+          </button>
+        </div>
+      </section>
+
+      <section class="screen tracking-screen" id="tracking-screen" aria-hidden="true">
+        <header class="topbar">
+          <div class="signal">
+            <span class="signal-dot"></span>
+            <span id="gps-status">пошук сигналу</span>
+          </div>
+          <span class="quest-id">ПОШУК</span>
+        </header>
+
+        <div class="tracking-content">
+          <div class="radar" id="radar" aria-hidden="true">
+            <span class="compass-label compass-n">Пн</span>
+            <span class="compass-label compass-e">Сх</span>
+            <span class="compass-label compass-s">Пд</span>
+            <span class="compass-label compass-w">Зх</span>
+            <span class="radar-ring radar-ring-one"></span>
+            <span class="radar-ring radar-ring-two"></span>
+            <span class="radar-line radar-line-x"></span>
+            <span class="radar-line radar-line-y"></span>
+            <span class="heading-beam" id="heading-beam"></span>
+            <span class="target-dot" id="target-dot"></span>
+            <span class="user-beacon" id="user-beacon"></span>
+          </div>
+          <p class="eyebrow">Ще чалапати</p>
+          <div class="distance-readout">
+            <span id="distance">--</span>
+            <span>м</span>
+          </div>
+          <div class="direction-arrow" id="direction-arrow" aria-label="Поверни телефон у напрямку цілі">
+            <span>↑</span>
+            <small id="turn-hint">визначаю напрямок</small>
+          </div>
+          <p class="instruction tracking-message" id="tracking-message">
+            Дозволь доступ до геолокації
+          </p>
+        </div>
+
+        <div class="bottom-panel reveal-bottom">
+          <div class="live-indicator">
+            <span class="signal-dot"></span>
+            <span>GPS + компас наживо</span>
+          </div>
+          <button class="preview-button" id="show-reveal" type="button">
+            Назад
+          </button>
+        </div>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
