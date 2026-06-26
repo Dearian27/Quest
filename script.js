@@ -178,7 +178,7 @@ function updateCompass() {
   if (currentHeading === null) {
     elements.turnHint.textContent = "напрямок за GPS";
   } else if (absoluteTurn <= 10) {
-    elements.turnHint.textContent = "рухайся прямо";
+    elements.turnHint.textContent = "Повний вперед!!";
   } else {
     elements.turnHint.textContent = `поверни ${signedTurn > 0 ? "праворуч" : "ліворуч"} на ${absoluteTurn}°`;
   }
