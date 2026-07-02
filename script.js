@@ -24,6 +24,8 @@ const elements = {
 };
 
 const pad = (value) => String(value).padStart(2, "0");
+const searchStartedKey = "questSearchStarted";
+const finishedKey = "questFinished";
 const islandTarget = {
   latitude: 51.501221,
   longitude: 23.835152,
@@ -143,6 +145,9 @@ function updatePosition(position) {
   updateCompass();
   const hasArrived = effectiveDistance <= 10;
   elements.tracking.classList.toggle("has-arrived", hasArrived);
+  if (hasArrived) {
+    localStorage.setItem(finishedKey, "1");
+  }
   elements.trackingMessage.textContent = hasArrived
     ? "Знахідку підтверджено"
     : "Рухайся у напрямку стрілки";
@@ -164,6 +169,8 @@ function updateLocationAge() {
 function showFinishState() {
   setScreen("tracking");
   simulatedArrival = true;
+  localStorage.setItem(searchStartedKey, "1");
+  localStorage.setItem(finishedKey, "1");
   elements.distance.textContent = "0.0";
   elements.distanceUnit.textContent = "м";
   elements.gpsStatus.textContent = "фініш підтверджено";
@@ -266,6 +273,7 @@ function requestFreshPosition() {
 
 async function startTracking() {
   setScreen("tracking");
+  localStorage.setItem(searchStartedKey, "1");
   elements.gpsStatus.textContent = "пошук сигналу";
   await startCompass();
 
@@ -289,17 +297,25 @@ async function startTracking() {
 }
 
 document.querySelector("#show-final").addEventListener("click", () => setScreen("reveal"));
-document.querySelector("#show-countdown").addEventListener("click", () => setScreen("countdown"));
+document.querySelector("#show-countdown").addEventListener("click", () => {
+  localStorage.removeItem(searchStartedKey);
+  setScreen("countdown");
+});
 document.querySelector("#start-tracking").addEventListener("click", startTracking);
-document.querySelector("#show-reveal").addEventListener("click", () => setScreen("reveal"));
+document.querySelector("#show-reveal").addEventListener("click", () => {
+  localStorage.removeItem(searchStartedKey);
+  setScreen("reveal");
+});
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && elements.tracking.classList.contains("is-active")) {
     startTracking();
   }
 });
 
-if (forceFinish) {
+if (forceFinish || localStorage.getItem(finishedKey) === "1") {
   showFinishState();
+} else if (localStorage.getItem(searchStartedKey) === "1") {
+  startTracking();
 } else {
   updateCountdown();
   setInterval(updateCountdown, 1000);
