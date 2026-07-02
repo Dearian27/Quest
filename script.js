@@ -38,6 +38,7 @@ let simulatedArrival = false;
 let targetLocation = localStorage.getItem("questTargetVersion") === targetVersion
   ? JSON.parse(localStorage.getItem("questTargetLocation") || "null")
   : null;
+const forceFinish = new URLSearchParams(window.location.search).get("finish") === "1";
 
 if (!targetLocation) {
   localStorage.removeItem("questTargetLocation");
@@ -143,7 +144,7 @@ function updatePosition(position) {
   const hasArrived = effectiveDistance <= 10;
   elements.tracking.classList.toggle("has-arrived", hasArrived);
   elements.trackingMessage.textContent = hasArrived
-    ? "Ти в зоні фінішу"
+    ? "Знахідку підтверджено"
     : "Рухайся у напрямку стрілки";
   lastPosition = position;
   lastLocationUpdate = Date.now();
@@ -158,6 +159,18 @@ function updateLocationAge() {
   elements.gpsStatus.textContent = age < 2
     ? `наживо · точність ±${accuracy} м`
     : `${age} с тому · точність ±${accuracy} м`;
+}
+
+function showFinishState() {
+  setScreen("tracking");
+  simulatedArrival = true;
+  elements.distance.textContent = "0.0";
+  elements.gpsStatus.textContent = "фініш підтверджено";
+  elements.tracking.classList.add("has-arrived");
+  elements.trackingMessage.textContent = "Знахідку підтверджено";
+  elements.targetDot.style.left = "50%";
+  elements.targetDot.style.top = "50%";
+  document.querySelector("#simulate-arrival").textContent = "Вимкнути імітацію";
 }
 
 function updateCompass() {
@@ -278,6 +291,13 @@ document.querySelector("#simulate-arrival").addEventListener("click", () => {
       coords: lastPosition.coords,
       timestamp: Date.now(),
     });
+  } else if (simulatedArrival) {
+    showFinishState();
+  } else {
+    elements.tracking.classList.remove("has-arrived");
+    elements.distance.textContent = "--";
+    elements.gpsStatus.textContent = "пошук сигналу";
+    elements.trackingMessage.textContent = "Дозволь доступ до геолокації";
   }
 });
 document.addEventListener("visibilitychange", () => {
@@ -286,5 +306,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-updateCountdown();
-setInterval(updateCountdown, 1000);
+if (forceFinish) {
+  showFinishState();
+} else {
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}

@@ -490,6 +490,27 @@ h1 {
   min-height: 14px;
 }
 
+.certificate-reveal {
+  display: none;
+  margin-top: 26px;
+  text-align: center;
+}
+
+.certificate-reveal .eyebrow {
+  margin-bottom: 14px;
+}
+
+.certificate-reveal h2 {
+  margin: 0;
+  font-family: "Unbounded", sans-serif;
+  font-size: clamp(2rem, 9vw, 4.5rem);
+  font-weight: 500;
+  letter-spacing: -0.08em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow: 0 0 34px rgba(223, 232, 212, 0.2);
+}
+
 .ghost-button {
   color: var(--text);
   background: rgba(2, 3, 3, 0.42);
@@ -531,6 +552,14 @@ h1 {
   height: 28px;
   background: rgba(223, 232, 212, 0.25);
   box-shadow: 0 0 35px rgba(223, 232, 212, 0.95);
+}
+
+.tracking-screen.has-arrived .certificate-reveal {
+  display: block;
+}
+
+.tracking-screen.has-arrived .direction-arrow {
+  display: none;
 }
 
 @keyframes pulse {
