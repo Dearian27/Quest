@@ -13,6 +13,7 @@ const elements = {
   tracking: document.querySelector("#tracking-screen"),
   gpsStatus: document.querySelector("#gps-status"),
   distance: document.querySelector("#distance"),
+  distanceUnit: document.querySelector("#distance-unit"),
   trackingMessage: document.querySelector("#tracking-message"),
   targetDot: document.querySelector("#target-dot"),
   directionArrow: document.querySelector("#direction-arrow"),
@@ -23,7 +24,10 @@ const elements = {
 };
 
 const pad = (value) => String(value).padStart(2, "0");
-const targetVersion = "30m-v1";
+const islandTarget = {
+  latitude: 51.501221,
+  longitude: 23.835152,
+};
 let watchId;
 let locationPollId;
 let locationAgeId;
@@ -35,15 +39,10 @@ let locationRequestPending = false;
 let arrowRotation = 0;
 let headingRotation = 0;
 let simulatedArrival = false;
-let targetLocation = localStorage.getItem("questTargetVersion") === targetVersion
-  ? JSON.parse(localStorage.getItem("questTargetLocation") || "null")
-  : null;
+let targetLocation = islandTarget;
 const forceFinish = new URLSearchParams(window.location.search).get("finish") === "1";
-
-if (!targetLocation) {
-  localStorage.removeItem("questTargetLocation");
-  localStorage.setItem("questTargetVersion", targetVersion);
-}
+localStorage.removeItem("questTargetLocation");
+localStorage.removeItem("questTargetVersion");
 
 function setScreen(screenName) {
   ["countdown", "reveal", "tracking"].forEach((name) => {
@@ -58,7 +57,9 @@ function updateCountdown() {
   const remaining = targetDate - now;
 
   if (remaining <= 0) {
-    setScreen("reveal");
+    if (elements.countdown.classList.contains("is-active")) {
+      setScreen("reveal");
+    }
     return;
   }
 
@@ -122,22 +123,21 @@ function updatePosition(position) {
     longitude: position.coords.longitude,
   };
 
-  if (!targetLocation) {
-    targetLocation = destinationPoint(current.latitude, current.longitude, 30, 90);
-    localStorage.setItem("questTargetLocation", JSON.stringify(targetLocation));
-  }
-
   const result = distanceAndBearing(current, targetLocation);
   const effectiveDistance = simulatedArrival ? 0 : result.distance;
-  const displayDistance = result.distance < 100
-    ? effectiveDistance.toFixed(1)
-    : Math.round(effectiveDistance);
+  const isKilometers = effectiveDistance >= 1000;
+  const displayDistance = isKilometers
+    ? (effectiveDistance / 1000).toFixed(1)
+    : effectiveDistance < 100
+      ? effectiveDistance.toFixed(1)
+      : Math.round(effectiveDistance);
   const radarDistance = Math.min(effectiveDistance, 100);
   const radius = (radarDistance / 100) * 46;
   currentBearing = result.bearing;
   const radians = (result.bearing - 90) * Math.PI / 180;
 
   elements.distance.textContent = displayDistance;
+  elements.distanceUnit.textContent = isKilometers ? "км" : "м";
   elements.targetDot.style.left = `${50 + Math.cos(radians) * radius}%`;
   elements.targetDot.style.top = `${50 + Math.sin(radians) * radius}%`;
   updateCompass();
@@ -165,12 +165,12 @@ function showFinishState() {
   setScreen("tracking");
   simulatedArrival = true;
   elements.distance.textContent = "0.0";
+  elements.distanceUnit.textContent = "м";
   elements.gpsStatus.textContent = "фініш підтверджено";
   elements.tracking.classList.add("has-arrived");
   elements.trackingMessage.textContent = "Знахідку підтверджено";
   elements.targetDot.style.left = "50%";
   elements.targetDot.style.top = "50%";
-  document.querySelector("#simulate-arrival").textContent = "Вимкнути імітацію";
 }
 
 function updateCompass() {
@@ -226,14 +226,25 @@ async function startCompass() {
 }
 
 function locationError(error) {
-  elements.gpsStatus.textContent = "немає сигналу";
-  elements.trackingMessage.textContent = error.code === 1
-    ? "Дозволь геолокацію в налаштуваннях браузера"
-    : "Не вдалося визначити позицію";
+  if (error.code === 1) {
+    elements.gpsStatus.textContent = "геолокацію заблоковано";
+    elements.trackingMessage.textContent = "Дозволь геолокацію в налаштуваннях браузера";
+    return;
+  }
+
+  if (lastPosition) {
+    updateLocationAge();
+    elements.trackingMessage.textContent = "GPS шукає свіжішу позицію";
+    return;
+  }
+
+  elements.gpsStatus.textContent = "GPS шукає позицію";
+  elements.trackingMessage.textContent = "Почекай трохи або вийди на відкрите місце";
 }
 
 function requestFreshPosition() {
-  if (locationRequestPending || document.hidden) return;
+  const hasFreshPosition = lastLocationUpdate && Date.now() - lastLocationUpdate < 12000;
+  if (locationRequestPending || document.hidden || hasFreshPosition) return;
   locationRequestPending = true;
 
   navigator.geolocation.getCurrentPosition(
@@ -248,7 +259,7 @@ function requestFreshPosition() {
     {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 10000,
+      timeout: 15000,
     },
   );
 }
@@ -272,8 +283,8 @@ async function startTracking() {
 
   clearInterval(locationPollId);
   clearInterval(locationAgeId);
-  requestFreshPosition();
-  locationPollId = setInterval(requestFreshPosition, 3000);
+  setTimeout(requestFreshPosition, 5000);
+  locationPollId = setInterval(requestFreshPosition, 10000);
   locationAgeId = setInterval(updateLocationAge, 1000);
 }
 
@@ -281,25 +292,6 @@ document.querySelector("#show-final").addEventListener("click", () => setScreen(
 document.querySelector("#show-countdown").addEventListener("click", () => setScreen("countdown"));
 document.querySelector("#start-tracking").addEventListener("click", startTracking);
 document.querySelector("#show-reveal").addEventListener("click", () => setScreen("reveal"));
-document.querySelector("#simulate-arrival").addEventListener("click", () => {
-  simulatedArrival = !simulatedArrival;
-  document.querySelector("#simulate-arrival").textContent = simulatedArrival
-    ? "Вимкнути імітацію"
-    : "Імітація фінішу";
-  if (lastPosition) {
-    updatePosition({
-      coords: lastPosition.coords,
-      timestamp: Date.now(),
-    });
-  } else if (simulatedArrival) {
-    showFinishState();
-  } else {
-    elements.tracking.classList.remove("has-arrived");
-    elements.distance.textContent = "--";
-    elements.gpsStatus.textContent = "пошук сигналу";
-    elements.trackingMessage.textContent = "Дозволь доступ до геолокації";
-  }
-});
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && elements.tracking.classList.contains("is-active")) {
     startTracking();
